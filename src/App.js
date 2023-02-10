@@ -1,48 +1,80 @@
 import React from 'react';
 import './App.css';
-import {Badge, Col, Container, Nav, Navbar, NavbarBrand, NavItem, NavLink, Row, Table} from 'reactstrap';
+import {
+    Alert,
+    Badge,
+    Button,
+    Col,
+    Container,
+    DropdownItem,
+    DropdownMenu,
+    DropdownToggle,
+    Nav,
+    Navbar,
+    NavbarBrand,
+    NavItem,
+    NavLink,
+    Row,
+    Table,
+    UncontrolledDropdown,
+    UncontrolledButtonDropdown,
+    UncontrolledAlert 
+} from 'reactstrap';
 import strings from './strings';
 import SinglePieceOfDoctrine from './SinglePieceOfDoctrine';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome'
-import {faFileDownload, faFileUpload} from '@fortawesome/free-solid-svg-icons';
+import {
+    faChalkboard,
+    faFileDownload,
+    faFileImage,
+    faFileUpload,
+    faHandsHelping,
+    faSave
+} from '@fortawesome/free-solid-svg-icons';
 import Files from 'react-files';
 import HttpsRedirect from 'react-https-redirect';
 import html2canvas from 'html2canvas';
+import HelpSystem from "./HelpSystem";
+
 
 const logoStyle = {
-    height: 30,
-    marginTop: -5
+    height: 50
 };
 
 const sectionHeaderStyle = {
     textAlign: "center",
-    fontSize: '0.9rem'
+    fontSize: 'small'
 }
 
 const doctrineSectionStyle = {
-    fontSize: '0.9rem'
+    fontSize: 'small'
 }
 
 const categoryHeaderStyle = {
-    fontSize: '0.9rem',
+    fontSize: 'small',
     textAlign: 'right',
     fontStyle: 'italic'
 }
 
-const state = {};
-
 class App extends React.Component {
+
 
     constructor() {
         super();
         this.tableRef = React.createRef();
         this.updateEvaluation = this.updateEvaluation.bind(this);
-        this.downlad = App.download.bind(this);
+        this.download = this.download.bind(this);
         this.downloadPng = this.downloadPng.bind(this);
         this.onFilesChange = this.onFilesChange.bind(this);
+        this.componentDidMount = this.componentDidMount.bind(this);
+        this.localSave = this.localSave.bind(this);
+        this.localRestore = this.localRestore.bind(this);
+        this.startFromScratch = this.startFromScratch.bind(this);
+        this.toggleHelp = this.toggleHelp.bind(this);
         this.fileReader = new FileReader();
         this.fileReader.onload = (event) => {
             let loadedState = JSON.parse(event.target.result);
+            let newEvaluation = {};
             const categories = ["knowYourUsers", "systematicLearning", "highSituationalAwareness",
                 "commonLanguage", "challenge", "focusOnUserNeeds", "removeBiasAndDuplication",
                 "thinkSmallDetails", "methods", "beTransparent", "moveFast", "bePragmatic",
@@ -51,57 +83,71 @@ class App extends React.Component {
                 "iterativeStrategy", "action", "distributePower", "purpose", "exceptionalStandards",
                 "direction", "biasTowardsNew", "biasTowardsNew", "optimiseFlow", "thinkBig",
                 "beHumble", "beOwner", "complexStrategy", "seekTheBest", "landscape",
-                "noCore", "ecosystem", "noOneCulture", "constantEvolution"
+                "noCore", "ecosystem", "noOneCulture", "constantEvolution", "betterWithLess"
             ];
             categories.forEach((category) => {
                 if (loadedState[category] && loadedState[category].evaluation) {
                     if (loadedState[category].evaluation === 1) {
-                        state[category] = {evaluation: 1};
+                        newEvaluation[category] = {evaluation: 1};
                     } else if (loadedState[category].evaluation === 2) {
-                        state[category] = {evaluation: 2};
+                        newEvaluation[category] = {evaluation: 2};
                     } else if (loadedState[category].evaluation === 3) {
-                        state[category] = {evaluation: 3};
+                        newEvaluation[category] = {evaluation: 3};
                     } else {
-                        state[category] = {evaluation: 0};
+                        newEvaluation[category] = {evaluation: 0};
                     }
                 } else {
-                    state[category] = {evaluation: 0};
+                    newEvaluation[category] = {evaluation: 0};
                 }
             });
-            this.forceUpdate();
+            this.setState({companyEvaluation: newEvaluation, dirty: false});
         };
+        this.state = {
+            dirty: false,
+            companyEvaluation: {}
+        }
     }
 
     downloadPng() {
-		html2canvas(this.tableRef.current).then(canvas => {
-			const base64image = canvas.toDataURL('image/png');
-			const link = document.createElement('a');
-			link.download = 'Doctrine';
-			link.href = base64image;
-			link.click();
-		});
-	}
+        html2canvas(this.tableRef.current).then(canvas => {
+            const base64image = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'Doctrine';
+            link.href = base64image;
+            link.click();
+        });
+    }
 
-    updateEvaluation(key) {
-        if (!state[key]) {
-            state[key] = {
-                evaluation: 1
+    updateEvaluation(key, goal) {
+        let localCompanyEvaluation = this.state.companyEvaluation;
+
+        if (!localCompanyEvaluation[key]) {
+            localCompanyEvaluation[key] = {
+                evaluation: goal.nativeEvent ? 1 : goal
             }
         } else {
-            state[key].evaluation = (state[key].evaluation + 1) % 4;
+            localCompanyEvaluation[key].evaluation = goal.nativeEvent ? (localCompanyEvaluation[key].evaluation + 1) % 4 : goal;
         }
-        this.forceUpdate();
+
+        this.setState({
+            companyEvaluation: localCompanyEvaluation,
+            dirty: true
+        });
     };
 
+    componentDidMount() {
+        this.localRestore();
+    }
 
-    static download(e) {
+
+    download(e) {
         e.preventDefault();
         let contentType = "application/json;charset=utf-8;";
         let today = (new Date()).toLocaleString();
         let finalJSON = Object.assign({
             comment: "Assessment created at doctrine.wardleymaps.com",
             createdAt: today
-        }, state);
+        }, this.state.companyEvaluation);
         const a = document.createElement('a');
         a.download = 'Wardley\'s Doctrine assessment ' + today + '.json';
         a.href = 'data:' + contentType + ',' + encodeURIComponent(JSON.stringify(finalJSON));
@@ -115,8 +161,38 @@ class App extends React.Component {
         this.fileReader.readAsText(file[0]);
     }
 
-    render() {
+    localSave() {
+        localStorage.setItem("lastSession", JSON.stringify(this.state.companyEvaluation));
+        this.setState({dirty: false});
+    }
 
+    startFromScratch() {
+        this.setState({
+            companyEvaluation: {},
+            dirty: false
+        });
+    }
+
+    toggleHelp() {
+        let helpOpen = this.state.helpOpen;
+        this.setState({helpOpen: !helpOpen});
+    }
+
+    localRestore() {
+        let storedCompanyEvaluation = JSON.parse(localStorage.getItem("lastSession"));
+        if (storedCompanyEvaluation) {
+            this.setState({
+                    companyEvaluation: storedCompanyEvaluation,
+                    dirty: false
+                }
+            );
+        }
+    }
+
+    render() {
+        let saveButtonVariant = this.state.dirty ? "warning" : "outline";
+        let state = this.state.companyEvaluation;
+        let helpOpen = this.state.helpOpen;
         return (
             <HttpsRedirect>
                 <Container>
@@ -124,11 +200,11 @@ class App extends React.Component {
                         <Col sm={{size: 12}}>
                             <Navbar color="light" light expand="md">
                                 <NavbarBrand href="/">
-                                    <img src="/leflogo.svg" alt="Home" style={logoStyle}/>
+                                    <img src="/dat.png" alt="Home" style={logoStyle}/>
                                 </NavbarBrand>
                                 <Nav navbar className='rightNav ml-auto'>
                                     <NavItem>
-                                        <NavLink href="#load"  style={{fontSize:'0.9rem'}}><Files
+                                        <NavLink href="#load" style={{fontSize: 'small'}}><Files
                                             className='files-dropzone'
                                             onChange={this.onFilesChange}
                                             // onError={this.onFilesError}
@@ -143,29 +219,63 @@ class App extends React.Component {
                                         </Files></NavLink>
                                     </NavItem>
                                     <NavItem>
-                                        <NavLink href="#save" onClick={this.downlad}  style={{fontSize:'0.9rem'}}><FontAwesomeIcon
-                                            icon={faFileDownload}/>&nbsp;Download</NavLink>
+                                        <NavLink href="#load" onClick={this.startFromScratch}
+                                                 style={{fontSize: 'small'}}>
+                                            <FontAwesomeIcon icon={faChalkboard}/>&nbsp;Clear
+                                        </NavLink>
                                     </NavItem>
+                                    <NavItem >
+                                        <NavLink href="#save" onClick={this.localSave}  style={{fontSize: 'small'}} active={saveButtonVariant==='warning'}>
+                                            <span> <FontAwesomeIcon icon={faSave}/>&nbsp;Save...</span>
+                                        </NavLink>
+                                    </NavItem>
+                                    <UncontrolledDropdown style={{fontSize: 'small'}}
+                                        inNavbar
+                                        nav
+                                        caret
+                                    >
+                                        <DropdownToggle
+                                            caret
+                                            nav
+                                            inNavbar
+                                            split
+                                        >
+                                        </DropdownToggle>
+                                        <DropdownMenu>
+                                            <DropdownItem nav inNavbar href="#save" onClick={this.download}> 
+                                                <span style={{fontSize: 'small'}}><FontAwesomeIcon icon={faFileDownload}/>&nbsp;Download as JSON file</span>
+                                            </DropdownItem>
+                                            <DropdownItem nav inNavbar href="#save" onClick={this.downloadPng}> 
+                                            <span style={{fontSize: 'small'}}><FontAwesomeIcon icon={faFileImage}/>&nbsp;Export PNG</span>
+                                            </DropdownItem>
+                                        </DropdownMenu>
+                                    </UncontrolledDropdown>
                                     <NavItem>
-                                        <NavLink href="#save" onClick={this.downloadPng}  style={{fontSize:'0.9rem'}}><FontAwesomeIcon
-                                            icon={faFileDownload}/>&nbsp;Export as PNG</NavLink>
+                                        <NavLink href="#help" onClick={this.toggleHelp} style={{fontSize: 'small'}}
+                                                 toggle={function noRefCheck() {
+                                                 }}>
+                                            <FontAwesomeIcon icon={faHandsHelping}/>&nbsp;Help
+                                        </NavLink>
                                     </NavItem>
                                 </Nav>
                             </Navbar>
+                            <UncontrolledAlert color="info">
+                                Learn more about doctrine at  <a className="alert-link" href="https://wardleymaps.com/doctrine">wardleymaps.com/doctrine</a>!
+                            </UncontrolledAlert >
                         </Col>
                     </Row>
                     <Row>
                         <Col xs="12">
                             <div ref={this.tableRef}>
-                                <Table bordered responsive size="sm">
+                                <Table responsive size="sm">
                                     <thead>
-                                    <tr>
+                                    <tr style={{backgroundColor: ''}}>
                                         <th style={doctrineSectionStyle}>{strings.category}</th>
                                         <th colSpan="6" style={sectionHeaderStyle}>{strings.doctrine}</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <tr>
+                                    <tr style={{backgroundColor: ''}}>
                                         <th></th>
                                         <th style={categoryHeaderStyle}>{strings.communication}</th>
                                         <th style={categoryHeaderStyle}>{strings.development}</th>
@@ -315,13 +425,14 @@ class App extends React.Component {
                     </Row>
                     <Row>
                         <Col sm={{size: 12}} style={{textAlign: 'right', fontSize: 'smaller'}}>
-                        <span>Based on Simon Wardley's work and <a href={"https://wardleypedia.org/mediawiki/index.php/Doctrine_Patterns"}>Wardleypedia</a>. Learn more at <a
-                            href={"https://learn.wardleymaps.com/"}>https://learn.wardleymaps.com/</a>.&nbsp;</span>
+                        <span>Based on Simon Wardley's work and <a
+                            href={"https://wardleypedia.org/mediawiki/index.php/Doctrine_Patterns"}>Wardleypedia</a>. </span>
                             <span><a href="https://github.com/cdaniel/doctrine/"><Badge
                                 color="secondary">Fork me on Github!</Badge></a></span>
                         </Col>
                     </Row>
                 </Container>
+                <HelpSystem open={helpOpen} toggleHelp={this.toggleHelp}/>
             </HttpsRedirect>
         );
     };
